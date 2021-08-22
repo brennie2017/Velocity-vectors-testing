@@ -1,0 +1,231 @@
+//
+//  main.c
+//  Program
+//
+
+#include <stdio.h>
+#include <stdlib.h>
+
+#include <math.h>
+#include <string.h>
+
+#define MAX_STRING_LENGTH 100
+#define INPUT_FILE_NAME "points.txt"
+#define OUTPUT_FILE_NAME "moveinfo.txt"
+
+typedef struct Vector Vector;
+struct Vector
+{
+    float x;
+    float y;
+    float z;
+};
+
+typedef struct MoveInfo MoveInfo;
+struct MoveInfo
+{
+    Vector velocity;
+    float duration;
+};
+
+void printWelcomeMessage();
+int countInputFileLines();
+void getPointFromString(char string[], Vector *point);
+void getMoveInfoBetweenPoints(MoveInfo *moveInfo, Vector firstPoint, Vector secondPoint);
+void writeMoveInfoToFile(MoveInfo moveInfo[], int count);
+
+/*
+ * Problem solution
+ */
+int main(int argc, const char * argv[])
+{
+    printWelcomeMessage();
+    
+    // read in points from file
+    int numPoints = countInputFileLines();
+    //Vector points[numPoints];
+    // Visual Studio users can't create arrays with sizes determined
+    // at run time because of the compiler Visual Studio uses
+    Vector* points = malloc(numPoints * sizeof(Vector));
+    char currentLine[MAX_STRING_LENGTH];
+    
+    // open file for reading
+    FILE *inputFile = fopen(INPUT_FILE_NAME, "r");
+    if (inputFile == NULL)
+    {
+        printf("\n");
+        printf("File open failed\n");
+        return(EXIT_FAILURE);
+    }
+    
+    // read in points
+    for (int i = 0; i < numPoints; i++)
+    {
+        fgets(currentLine, MAX_STRING_LENGTH, inputFile);
+        getPointFromString(currentLine, &points[i]);
+    }
+    
+    // close the file
+    fclose(inputFile);
+    
+    // calculate move info between points
+    float totalDuration = 0;
+    //MoveInfo moveInfo[numPoints - 1];
+    // Visual Studio users can't create arrays with sizes determined
+    // at run time because of the compiler Visual Studio uses
+    MoveInfo* moveInfo = malloc((numPoints - 1) * sizeof(MoveInfo));
+    for (int i = 0; i < numPoints - 1; i++)
+    {
+        getMoveInfoBetweenPoints(&moveInfo[i], points[i], points[i + 1]);
+        totalDuration += moveInfo[i].duration;
+    }
+    
+    // write move info file and print total duration
+    writeMoveInfoToFile(moveInfo, numPoints - 1);
+    printf("\n");
+    printf("Total duration for moves: %.4f seconds\n", totalDuration);
+    
+    // free memory
+    free(points);
+    points = NULL;
+    free(moveInfo);
+    moveInfo = NULL;
+    
+    return 0;
+}
+
+/*
+ * Prints a welcome message
+ */
+void printWelcomeMessage()
+{
+    printf("Welcome to I, Robot!\n");
+    printf("\n");
+    printf("This program reads a set of points from\n");
+    printf("a file, calculates the velocities and durations\n");
+    printf("to move between each of those points, and saves\n");
+    printf("that move information to a file. It also prints\n");
+    printf("the total duration for all the movements\n");
+}
+
+/*
+ * Counts the number of lines in the input file
+ */
+int countInputFileLines()
+{
+    char currentLine[MAX_STRING_LENGTH];
+    int numLines = 0;
+    
+    // open file for reading
+    FILE *inputFile = fopen(INPUT_FILE_NAME, "r");
+    if (inputFile == NULL)
+    {
+        printf("\n");
+        printf("File open failed\n");
+    }
+    
+    // count lines in file
+    while (!feof(inputFile))
+    {
+        fgets(currentLine, MAX_STRING_LENGTH, inputFile);
+        numLines++;
+    }
+    
+    // close the file and return
+    fclose(inputFile);
+    return numLines;
+}
+
+/*
+ * Extracts a point from the given string
+ */
+void getPointFromString(char string[], Vector *point)
+{
+    // find first comma index
+    int commaIndex = -1;
+    char *result = NULL;
+    result = strchr(string, ',');
+    char *stringStart = &string[0];
+    commaIndex = result - stringStart;
+    
+    // extract x from string
+    //char xString[commaIndex + 1];
+    // Visual Studio users can't create arrays with sizes determined
+    // at run time because of the compiler Visual Studio uses
+    char* xString = malloc((commaIndex + 1) * sizeof(char));
+    strncpy(xString, string, commaIndex);
+    xString[commaIndex] = '\0';
+    point->x = atof(xString);
+    
+    // find second comma index
+    string = &string[0] + commaIndex + 1;
+    result = strchr(string, ',');
+    stringStart = &string[0];
+    commaIndex = result - stringStart;
+    
+    // extract y from string
+    //char yString[commaIndex + 1];
+    // Visual Studio users can't create arrays with sizes determined
+    // at run time because of the compiler Visual Studio uses
+    char* yString = malloc((commaIndex + 1) * sizeof(char));
+    strncpy(yString, string, commaIndex);
+    yString[commaIndex] = '\0';
+    point->y = atof(yString);
+    
+    // move past second comma and extract z
+    string = &string[0] + commaIndex + 1;
+    point->z = atof(string);
+    
+    // free memory
+    free(xString);
+    xString = NULL;
+    free(yString);
+    yString = NULL;
+}
+
+/*
+ * Gets the move info going from the first point to the second point
+ */
+void getMoveInfoBetweenPoints(MoveInfo *moveInfo, Vector firstPoint, Vector secondPoint)
+{
+    // calculate velocity vector
+    moveInfo->velocity.x = secondPoint.x - firstPoint.x;
+    moveInfo->velocity.y = secondPoint.y - firstPoint.y;
+    moveInfo->velocity.z = secondPoint.z - firstPoint.z;
+    float length = sqrtf(powf(moveInfo->velocity.x, 2) +
+                         powf(moveInfo->velocity.y, 2) +
+                         powf(moveInfo->velocity.z, 2));
+    moveInfo->velocity.x /= length;
+    moveInfo->velocity.y /= length;
+    moveInfo->velocity.z /= length;
+    
+    // speed is 1 ft/s, so duration is length from above
+    moveInfo->duration = length;
+}
+
+/*
+ * Writes the move info to the output file
+ */
+void writeMoveInfoToFile(MoveInfo moveInfo[], int count)
+{
+    // open file for writing
+    FILE *outputFile = fopen(OUTPUT_FILE_NAME, "w");
+    if (outputFile == NULL)
+    {
+        printf("\n");
+        printf("File open failed\n");
+    }
+    
+    // write move info to file
+    for (int i = 0; i < count; i++)
+    {
+        fprintf(outputFile, "%.4f,%.4f,%.4f,%.4f\n",
+                moveInfo[i].velocity.x,
+                moveInfo[i].velocity.y,
+                moveInfo[i].velocity.z,
+                moveInfo[i].duration);
+    }
+    
+    // close file
+    fclose(outputFile);
+}
